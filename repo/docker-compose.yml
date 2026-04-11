@@ -1,0 +1,141 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD before running}"
+      MYSQL_DATABASE: medrights
+      MYSQL_USER: medrights_app
+      MYSQL_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DJANGO_SETTINGS_MODULE: medrights.settings.production
+      DATABASE_HOST: db
+      DATABASE_PORT: "3306"
+      DATABASE_NAME: medrights
+      DATABASE_USER: medrights_app
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      REDIS_URL: redis://redis:6379/0
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      MEDRIGHTS_ALLOWED_HOSTS: "localhost,backend,frontend,127.0.0.1"
+      MEDRIGHTS_DEBUG: "false"
+      CLINIC_TIMEZONE: "America/New_York"
+    ports:
+      - "8000:8000"
+    volumes:
+      - media_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A medrights worker -l info --without-heartbeat --without-mingle --without-gossip
+    stop_grace_period: 30s
+    environment:
+      DJANGO_SETTINGS_MODULE: medrights.settings.production
+      DATABASE_HOST: db
+      DATABASE_PORT: "3306"
+      DATABASE_NAME: medrights
+      DATABASE_USER: medrights_app
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      REDIS_URL: redis://redis:6379/0
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      CLINIC_TIMEZONE: "America/New_York"
+    volumes:
+      - media_storage:/app/storage
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A medrights beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DJANGO_SETTINGS_MODULE: medrights.settings.production
+      DATABASE_HOST: db
+      DATABASE_PORT: "3306"
+      DATABASE_NAME: medrights
+      DATABASE_USER: medrights_app
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      REDIS_URL: redis://redis:6379/0
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      CLINIC_TIMEZONE: "America/New_York"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    environment:
+      CI: "true"
+    profiles:
+      - test
+
+  e2e:
+    build:
+      context: ./e2e
+      dockerfile: Dockerfile
+    environment:
+      BASE_URL: http://frontend:80
+      API_URL: http://backend:8000
+    depends_on:
+      - frontend
+      - backend
+    profiles:
+      - test
+
+volumes:
+  mysql_data:
+  media_storage:

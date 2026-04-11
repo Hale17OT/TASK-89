@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+e2e/node_modules/
+
+# Build artifacts
+frontend/dist/
+frontend/*.tsbuildinfo
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment (secrets are injected at runtime, not in files)
+.env
+.env.*
+
+# Storage (runtime data)
+backend/storage/
+backend/staticfiles/
+
+# Coverage
+.coverage
+htmlcov/
+coverage/
+
+# Temporary
+.tmp/
+*.log
