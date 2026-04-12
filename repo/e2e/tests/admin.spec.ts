@@ -5,6 +5,7 @@ test.describe("Admin", () => {
   test("user management page loads for admin", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/admin/users");
+    await page.waitForLoadState("networkidle");
 
     // Should see a heading or content related to user management
     await expect(
@@ -20,6 +21,7 @@ test.describe("Admin", () => {
   test("audit log page loads with filters", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/admin/audit-log");
+    await page.waitForLoadState("networkidle");
 
     await expect(
       page.getByRole("heading", { name: /audit log/i })
@@ -43,6 +45,7 @@ test.describe("Admin", () => {
   test("throttling page shows blacklist info", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/admin/throttling");
+    await page.waitForLoadState("networkidle");
 
     await expect(
       page.getByRole("heading", { name: /throttling|blacklist/i })

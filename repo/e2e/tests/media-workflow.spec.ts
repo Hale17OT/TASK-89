@@ -5,6 +5,7 @@ test.describe("Media Workflow", () => {
   test("media upload page has watermark controls with correct defaults", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/media/upload");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText(/drag and drop|browse/i)).toBeVisible({ timeout: 10000 });
     // Watermark controls
     await expect(page.getByText(/clinic name/i)).toBeVisible();
@@ -20,6 +21,7 @@ test.describe("Media Workflow", () => {
   test("media upload accepts only JPEG and PNG", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/media/upload");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText(/JPEG, PNG/)).toBeVisible({ timeout: 10000 });
     // Should NOT mention GIF or WebP
     await expect(page.getByText(/GIF/)).not.toBeVisible();
@@ -29,12 +31,14 @@ test.describe("Media Workflow", () => {
   test("media library has upload link", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/media");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText(/upload/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("compliance user cannot upload media", async ({ page }) => {
     await loginAs(page, "compliance");
     await page.goto("/media");
+    await page.waitForLoadState("networkidle");
     // Compliance is not in the allowed roles for media
     await expect(page.getByText(/403|access denied|forbidden|permission/i)).toBeVisible({
       timeout: 10000,
@@ -44,6 +48,7 @@ test.describe("Media Workflow", () => {
   test("clinician can access media library", async ({ page }) => {
     await loginAs(page, "clinician");
     await page.goto("/media");
+    await page.waitForLoadState("networkidle");
     // Clinician should be able to view media
     await expect(page.locator("body")).not.toContainText(/403|forbidden/i);
   });

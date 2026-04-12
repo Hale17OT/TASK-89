@@ -5,6 +5,7 @@ test.describe("Patients", () => {
   test("patient search page loads", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/patients");
+    await page.waitForLoadState("networkidle");
 
     await expect(
       page.getByRole("heading", { name: /patients/i })
@@ -18,6 +19,7 @@ test.describe("Patients", () => {
   test("create patient form renders all fields", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/patients/new");
+    await page.waitForLoadState("networkidle");
 
     await expect(
       page.getByRole("heading", { name: /register new patient/i })
@@ -45,6 +47,7 @@ test.describe("Patients", () => {
   test("create patient with valid data shows success", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/patients/new");
+    await page.waitForLoadState("networkidle");
 
     const uniqueMrn = `MRN-${Date.now()}`;
     await page.getByPlaceholder(/medical record number/i).fill(uniqueMrn);
@@ -66,6 +69,7 @@ test.describe("Patients", () => {
   }) => {
     await loginAsAdmin(page);
     await page.goto("/patients");
+    await page.waitForLoadState("networkidle");
 
     const searchInput = page.getByPlaceholder(/search/i);
     await searchInput.fill("zzz_nonexistent_patient_xyz_12345");
@@ -81,6 +85,7 @@ test.describe("Patients", () => {
 
     // First create a patient to ensure one exists
     await page.goto("/patients/new");
+    await page.waitForLoadState("networkidle");
     const uniqueMrn = `MRN-DETAIL-${Date.now()}`;
     await page.getByPlaceholder(/medical record number/i).fill(uniqueMrn);
     await page.getByPlaceholder(/first name/i).fill("DetailFirst");

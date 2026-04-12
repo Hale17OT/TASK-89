@@ -17,6 +17,8 @@ export async function loginAs(
   await page.getByRole("button", { name: /sign in/i }).click();
   // Wait for redirect away from /login (may go to / then /dashboard)
   await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 45000 });
+  // Wait for the target page to finish loading its data
+  await page.waitForLoadState("networkidle");
 }
 
 /**

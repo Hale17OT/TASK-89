@@ -20,10 +20,11 @@ test.describe("Financials", () => {
   test("create order form with line items", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/financials/new");
+    await page.waitForLoadState("networkidle");
 
     await expect(
       page.getByRole("heading", { name: /create order/i })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15000 });
 
     // Patient search field
     await expect(

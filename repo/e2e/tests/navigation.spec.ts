@@ -21,12 +21,14 @@ test.describe("Navigation & Layout", () => {
   test("404 page shown for unknown routes", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/this-page-does-not-exist");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText(/404|not found/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("back to dashboard link works from error pages", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/this-page-does-not-exist");
+    await page.waitForLoadState("networkidle");
     const backLink = page.getByRole("link", { name: /back to dashboard/i });
     if (await backLink.isVisible().catch(() => false)) {
       await backLink.click();

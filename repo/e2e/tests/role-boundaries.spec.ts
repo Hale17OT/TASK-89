@@ -42,6 +42,9 @@ test.describe("Role Boundary Enforcement (E2E)", () => {
   test("front desk can access patients", async ({ page }) => {
     await loginAs(page, "frontdesk");
     await page.goto("/patients");
+    await page.waitForLoadState("networkidle");
+    // Wait for page content to render before checking
+    await page.waitForTimeout(1000);
     await expect(page.locator("body")).not.toContainText(/403|forbidden/i);
   });
 
