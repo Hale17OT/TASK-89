@@ -2,10 +2,10 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD before running}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-medrights_root_2026}"
       MYSQL_DATABASE: medrights
       MYSQL_USER: medrights_app
-      MYSQL_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      MYSQL_PASSWORD: "${MYSQL_APP_PASSWORD:-medrights_app_2026}"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -38,10 +38,10 @@ services:
       DATABASE_PORT: "3306"
       DATABASE_NAME: medrights
       DATABASE_USER: medrights_app
-      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:-medrights_app_2026}"
       REDIS_URL: redis://redis:6379/0
-      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
-      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:-ZGV2LW1hc3Rlci1rZXktMzItYnl0ZXMtbG9uZyEhISE=}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:-django-production-secret-key-override-in-deployment}"
       MEDRIGHTS_ALLOWED_HOSTS: "localhost,backend,frontend,127.0.0.1"
       MEDRIGHTS_DEBUG: "false"
       CLINIC_TIMEZONE: "America/New_York"
@@ -73,10 +73,10 @@ services:
       DATABASE_PORT: "3306"
       DATABASE_NAME: medrights
       DATABASE_USER: medrights_app
-      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:-medrights_app_2026}"
       REDIS_URL: redis://redis:6379/0
-      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
-      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:-ZGV2LW1hc3Rlci1rZXktMzItYnl0ZXMtbG9uZyEhISE=}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:-django-production-secret-key-override-in-deployment}"
       CLINIC_TIMEZONE: "America/New_York"
     volumes:
       - media_storage:/app/storage
@@ -95,10 +95,10 @@ services:
       DATABASE_PORT: "3306"
       DATABASE_NAME: medrights
       DATABASE_USER: medrights_app
-      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD before running}"
+      DATABASE_PASSWORD: "${MYSQL_APP_PASSWORD:-medrights_app_2026}"
       REDIS_URL: redis://redis:6379/0
-      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:?Set MEDRIGHTS_MASTER_KEY before running}"
-      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:?Set MEDRIGHTS_SECRET_KEY before running}"
+      MEDRIGHTS_MASTER_KEY: "${MEDRIGHTS_MASTER_KEY:-ZGV2LW1hc3Rlci1rZXktMzItYnl0ZXMtbG9uZyEhISE=}"
+      MEDRIGHTS_SECRET_KEY: "${MEDRIGHTS_SECRET_KEY:-django-production-secret-key-override-in-deployment}"
       CLINIC_TIMEZONE: "America/New_York"
     depends_on:
       backend:

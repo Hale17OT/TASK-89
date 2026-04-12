@@ -10,32 +10,13 @@ Offline clinical portal for managing patient Master Patient Index (MPI) records,
 
 ## Quick Start
 
-1. Generate and export all required secrets:
-
-```bash
-export MEDRIGHTS_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
-export MEDRIGHTS_MASTER_KEY=$(python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())")
-export MYSQL_ROOT_PASSWORD=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))")
-export MYSQL_APP_PASSWORD=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))")
-```
-
-Alternative without Python:
-
-```bash
-# Alternative without Python:
-export MEDRIGHTS_SECRET_KEY=$(openssl rand -base64 50)
-export MEDRIGHTS_MASTER_KEY=$(openssl rand -base64 32)
-export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 24)
-export MYSQL_APP_PASSWORD=$(openssl rand -base64 24)
-```
-
-2. Start the services:
+1. Start the services (development defaults are built into docker-compose.yml):
 
 ```bash
 docker compose up --build
 ```
 
-3. First-run setup (create the initial admin user):
+2. First-run setup (create the initial admin user):
 
 ```bash
 docker compose exec backend python manage.py seed_initial_data --admin-password <YOUR_SECURE_PASSWORD>
@@ -50,6 +31,18 @@ Additional role users (front desk, clinician, compliance) should be created by t
 | Health Check | http://localhost:8000/api/v1/health/ | System health status |
 | MySQL | localhost:3306 | Database |
 | Redis | localhost:6379 | Celery broker |
+
+### Production Deployment
+
+For production, override the default secrets via environment variables:
+
+```bash
+export MEDRIGHTS_SECRET_KEY=$(openssl rand -base64 50)
+export MEDRIGHTS_MASTER_KEY=$(openssl rand -base64 32)
+export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 24)
+export MYSQL_APP_PASSWORD=$(openssl rand -base64 24)
+docker compose up --build -d
+```
 
 ## Testing
 
