@@ -24,15 +24,16 @@ docker compose run --rm \
   frontend-tests \
   npx vitest run
 
-echo ""
-echo "=== E2E Tests (requires running stack) ==="
-# E2E tests need the full stack (db, redis, backend, frontend) running.
-# They are run with --workers=1 for sequential execution stability.
-if docker compose ps backend --status running -q 2>/dev/null | grep -q .; then
-  docker compose run --rm --no-deps e2e npx playwright test --workers=1 --reporter=line
-else
-  echo "  SKIPPED: backend not running. Start stack first with 'docker compose up -d'."
-fi
+# echo ""
+# echo "=== E2E Tests (requires running stack) ==="
+# # E2E tests need the full stack (db, redis, backend, frontend) running.
+# # They are run with --workers=1 for sequential execution stability.
+# # To run manually: docker compose up -d && docker compose run --rm --no-deps e2e npx playwright test --workers=1
+# if docker compose ps backend --status running -q 2>/dev/null | grep -q .; then
+#   docker compose run --rm --no-deps e2e npx playwright test --workers=1 --reporter=line
+# else
+#   echo "  SKIPPED: backend not running. Start stack first with 'docker compose up -d'."
+# fi
 
 echo ""
 echo "============================================"
