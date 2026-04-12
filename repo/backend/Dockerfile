@@ -16,4 +16,11 @@ RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn medrights.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"]
+CMD ["sh", "-c", "\
+  echo 'Waiting for database...' && \
+  for i in $(seq 1 30); do \
+    python -c 'import django; django.setup(); from django.db import connection; connection.ensure_connection()' 2>/dev/null && break; \
+    echo \"  attempt $i/30...\"; sleep 2; \
+  done && \
+  python manage.py migrate --noinput && \
+  gunicorn medrights.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"]
