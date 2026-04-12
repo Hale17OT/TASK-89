@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db import transaction
 from django.http import FileResponse
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -64,7 +64,9 @@ def media_upload(request):
 
     try:
         asset = serializer.save()
-    except Exception as exc:
+    except serializers.ValidationError:
+        raise  # Let DRF handle validation errors with proper field-level detail
+    except Exception:
         logger.exception("Media upload failed")
         return Response(
             {
