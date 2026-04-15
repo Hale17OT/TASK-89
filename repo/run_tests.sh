@@ -27,28 +27,38 @@ docker compose run --rm \
 echo ""
 echo "=== E2E Tests ==="
 # E2E tests need the full stack (db, redis, backend, frontend) running.
-# The audit pipeline starts the stack before calling this script.
+# This script starts the stack itself so it works whether or not the
+# audit pipeline already has containers running.
 
-# 1. Wait for backend health endpoint to be ready
+# 1. Start the full stack in detached mode (idempotent - reuses running containers)
+echo "  Starting application stack..."
+docker compose up -d db redis backend frontend celery_worker celery_beat
+
+# 2. Wait for backend health endpoint to be ready
 echo "  Waiting for backend to be healthy..."
-for i in $(seq 1 30); do
+HEALTHY=false
+for i in $(seq 1 60); do
   if docker compose exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')" 2>/dev/null; then
     echo "  Backend is healthy."
+    HEALTHY=true
     break
   fi
-  if [ "$i" -eq 30 ]; then
-    echo "  WARNING: Backend health check timed out. Attempting E2E anyway..."
-  fi
-  echo "    attempt $i/30..."
+  echo "    attempt $i/60..."
   sleep 2
 done
 
-# 2. Seed E2E test users (idempotent - skips if they already exist)
+if [ "$HEALTHY" != "true" ]; then
+  echo "  ERROR: Backend did not become healthy. Aborting E2E tests."
+  docker compose logs backend | tail -50
+  exit 1
+fi
+
+# 3. Seed E2E test users (idempotent - skips if they already exist)
 echo "  Seeding E2E test users..."
 docker compose exec -T backend python manage.py seed_initial_data \
   --e2e --admin-password 'MedRights2026!'
 
-# 3. Run E2E tests
+# 4. Run E2E tests
 docker compose run --rm --no-deps e2e npx playwright test --workers=1 --reporter=line
 
 echo ""
