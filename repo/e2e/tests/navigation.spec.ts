@@ -22,7 +22,7 @@ test.describe("Navigation & Layout", () => {
     await loginAsAdmin(page);
     await page.goto("/this-page-does-not-exist");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/404|not found/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: /404/ })).toBeVisible({ timeout: 10000 });
   });
 
   test("back to dashboard link works from error pages", async ({ page }) => {

@@ -6,7 +6,7 @@ test.describe("Reports & Outbox", () => {
     await loginAsAdmin(page);
     await page.goto("/reports");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/subscription|report/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/subscription|report/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("subscription list has New Subscription and View Outbox buttons", async ({ page }) => {
@@ -22,23 +22,23 @@ test.describe("Reports & Outbox", () => {
     await page.goto("/reports/new");
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(/name/i).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/report type/i)).toBeVisible();
-    await expect(page.getByText(/schedule/i)).toBeVisible();
-    await expect(page.getByText(/format/i)).toBeVisible();
+    await expect(page.getByLabel(/report type/i)).toBeVisible();
+    await expect(page.getByText(/schedule/i).first()).toBeVisible();
+    await expect(page.getByText(/format/i).first()).toBeVisible();
   });
 
   test("outbox dashboard page loads", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/reports/outbox");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/outbox|report/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/outbox/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("front desk user cannot access reports", async ({ page }) => {
     await loginAs(page, "frontdesk");
     await page.goto("/reports");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/403|access denied|forbidden|permission/i)).toBeVisible({
+    await expect(page.getByRole("heading", { name: /403/i })).toBeVisible({
       timeout: 10000,
     });
   });
@@ -47,6 +47,6 @@ test.describe("Reports & Outbox", () => {
     await loginAs(page, "compliance");
     await page.goto("/reports");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/subscription|report/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/subscription|report/i).first()).toBeVisible({ timeout: 10000 });
   });
 });

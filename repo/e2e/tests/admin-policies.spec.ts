@@ -6,7 +6,7 @@ test.describe("Admin - Policies", () => {
     await loginAsAdmin(page);
     await page.goto("/admin/policies");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/polic/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: /polic/i })).toBeVisible({ timeout: 15000 });
   });
 
   test("admin nav shows all sections", async ({ page }) => {
@@ -24,9 +24,9 @@ test.describe("Admin - Policies", () => {
     await loginAsAdmin(page);
     await page.goto("/admin/export");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/patient records/i)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/media assets/i)).toBeVisible();
-    await expect(page.getByText(/financial records/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /patient records/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: /media assets/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /financial records/i })).toBeVisible();
   });
 
   test("export requires sudo authentication", async ({ page }) => {

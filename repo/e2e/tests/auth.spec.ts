@@ -90,7 +90,7 @@ test.describe("Authentication", () => {
 
     // Should see a forbidden message (403) or be redirected
     await expect(
-      page.getByText(/403|access denied|forbidden|do not have.*permission/i)
+      page.getByRole("heading", { name: /403/i })
     ).toBeVisible({ timeout: 10000 });
   });
 });

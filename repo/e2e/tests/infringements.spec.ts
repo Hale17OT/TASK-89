@@ -14,16 +14,16 @@ test.describe("Infringement Reporting", () => {
     await page.goto("/infringements/new");
     await page.waitForLoadState("networkidle");
     // Should have screenshot, reference, and notes fields
-    await expect(page.getByText(/screenshot|capture/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/reference|url/i)).toBeVisible();
-    await expect(page.getByText(/notes/i)).toBeVisible();
+    await expect(page.getByText(/screenshot|capture/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/reference|url/i).first()).toBeVisible();
+    await expect(page.getByText(/notes/i).first()).toBeVisible();
   });
 
   test("front desk user cannot access infringements", async ({ page }) => {
     await loginAs(page, "frontdesk");
     await page.goto("/infringements");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/403|access denied|forbidden|permission/i)).toBeVisible({
+    await expect(page.getByRole("heading", { name: /403/i })).toBeVisible({
       timeout: 10000,
     });
   });

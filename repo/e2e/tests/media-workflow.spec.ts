@@ -32,7 +32,7 @@ test.describe("Media Workflow", () => {
     await loginAsAdmin(page);
     await page.goto("/media");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/upload/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("link", { name: /upload/i })).toBeVisible({ timeout: 10000 });
   });
 
   test("compliance user cannot upload media", async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe("Media Workflow", () => {
     await page.goto("/media");
     await page.waitForLoadState("networkidle");
     // Compliance is not in the allowed roles for media
-    await expect(page.getByText(/403|access denied|forbidden|permission/i)).toBeVisible({
+    await expect(page.getByRole("heading", { name: /403/i })).toBeVisible({
       timeout: 10000,
     });
   });

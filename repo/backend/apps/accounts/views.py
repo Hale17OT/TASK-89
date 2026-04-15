@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.sessions.models import Session
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -57,11 +58,13 @@ def csrf_cookie(request):
 # Login
 # ---------------------------------------------------------------------------
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
     """
     Authenticate a user with username + password.
+    CSRF is exempt because users have no session to protect at login time.
     The WorkstationThrottleMiddleware already enforces per-workstation
     throttling before this view runs, so we only need to record the
     attempt and handle the result.

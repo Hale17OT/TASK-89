@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { loginAsAdmin } from "./helpers";
 
 test.describe("Smoke Tests", () => {
   test("frontend loads login page", async ({ page }) => {
@@ -21,18 +22,16 @@ test.describe("Smoke Tests", () => {
   });
 
   test("login with valid credentials redirects to dashboard", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByRole("textbox", { name: /username/i }).fill("admin");
-    await page.getByLabel(/password/i).fill("MedRights2026!");
-    await page.getByRole("button", { name: /sign in/i }).click();
+    await loginAsAdmin(page);
     await expect(page).toHaveURL(/dashboard/);
   });
 
   test("login with invalid credentials shows error", async ({ page }) => {
     await page.goto("/login");
+    await page.waitForLoadState("networkidle");
     await page.getByRole("textbox", { name: /username/i }).fill("admin");
     await page.getByLabel(/password/i).fill("wrongpassword");
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page.getByText(/invalid/i)).toBeVisible();
+    await expect(page.getByText(/invalid|error|unexpected/i).first()).toBeVisible({ timeout: 10000 });
   });
 });

@@ -60,7 +60,7 @@ test.describe("Patients", () => {
 
     // Should navigate to patient detail or show success toast
     await expect(
-      page.getByText(/success|created|patient/i).or(page.locator('[data-sonner-toast]'))
+      page.locator('[data-sonner-toast]').first()
     ).toBeVisible({ timeout: 15000 });
   });
 
@@ -76,7 +76,7 @@ test.describe("Patients", () => {
 
     // Wait for debounce and results
     await expect(
-      page.getByText(/no patients found|try a different/i)
+      page.getByText(/no patients found/i).first()
     ).toBeVisible({ timeout: 10000 });
   });
 

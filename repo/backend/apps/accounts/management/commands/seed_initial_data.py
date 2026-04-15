@@ -30,6 +30,13 @@ class Command(BaseCommand):
         ("max_guest_profiles", 5, "Maximum guest profiles per session."),
     ]
 
+    E2E_USERS = [
+        ("admin", "admin", "System Administrator", True),
+        ("frontdesk", "front_desk", "Front Desk User", False),
+        ("clinician", "clinician", "Clinician User", False),
+        ("compliance", "compliance", "Compliance Officer", False),
+    ]
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--admin-password",
@@ -37,12 +44,44 @@ class Command(BaseCommand):
             default=None,
             help="Password for the initial admin user (required on first run).",
         )
+        parser.add_argument(
+            "--e2e",
+            action="store_true",
+            default=False,
+            help="Create all role users for E2E testing with the given password.",
+        )
 
     def handle(self, *args, **options):
-        self._create_admin_user(options["admin_password"])
+        if options["e2e"]:
+            self._create_e2e_users(options["admin_password"])
+        else:
+            self._create_admin_user(options["admin_password"])
         self._create_storage_dirs()
         self._seed_default_policies()
         self.stdout.write(self.style.SUCCESS("Seed data applied successfully."))
+
+    def _create_e2e_users(self, password):
+        if not password:
+            raise CommandError(
+                "Password required for E2E users. Run: "
+                "manage.py seed_initial_data --e2e --admin-password <password>"
+            )
+        for username, role, full_name, is_staff in self.E2E_USERS:
+            if User.objects.filter(username=username).exists():
+                self.stdout.write(f"  User '{username}' already exists -- skipped.")
+                continue
+            user = User.objects.create(
+                username=username,
+                role=role,
+                full_name=full_name,
+                is_active=True,
+                is_staff=is_staff,
+            )
+            user.set_password(password)
+            user.save(update_fields=["password"])
+            self.stdout.write(
+                self.style.SUCCESS(f"  Created user '{username}' with role '{role}'")
+            )
 
     def _create_admin_user(self, admin_password):
         if User.objects.filter(username="admin").exists():
