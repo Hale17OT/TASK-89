@@ -1,10 +1,8 @@
 """Unit tests for audit entry archival task."""
-import os
-import tempfile
 from datetime import timedelta
-from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.audit.models import AuditArchiveSegment, AuditEntry
@@ -47,8 +45,7 @@ class TestArchiveOldEntries:
         old1 = _create_entry(days_ago=200)
         old2 = _create_entry(days_ago=250)
 
-        with patch("apps.audit.tasks.settings") as mock_settings:
-            mock_settings.MEDRIGHTS_STORAGE_ROOT = str(tmp_path)
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.audit.tasks import archive_old_entries
             archive_old_entries()
 
@@ -64,8 +61,7 @@ class TestArchiveOldEntries:
         """Archival creates an AuditArchiveSegment boundary record."""
         _create_entry(days_ago=200)
 
-        with patch("apps.audit.tasks.settings") as mock_settings:
-            mock_settings.MEDRIGHTS_STORAGE_ROOT = str(tmp_path)
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.audit.tasks import archive_old_entries
             archive_old_entries()
 
@@ -79,8 +75,7 @@ class TestArchiveOldEntries:
         """Archival writes entries to a JSONL file on disk."""
         _create_entry(days_ago=200)
 
-        with patch("apps.audit.tasks.settings") as mock_settings:
-            mock_settings.MEDRIGHTS_STORAGE_ROOT = str(tmp_path)
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.audit.tasks import archive_old_entries
             archive_old_entries()
 
@@ -95,8 +90,7 @@ class TestArchiveOldEntries:
         """Running archival twice does not re-archive already-archived entries."""
         _create_entry(days_ago=200)
 
-        with patch("apps.audit.tasks.settings") as mock_settings:
-            mock_settings.MEDRIGHTS_STORAGE_ROOT = str(tmp_path)
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.audit.tasks import archive_old_entries
             archive_old_entries()
             archive_old_entries()

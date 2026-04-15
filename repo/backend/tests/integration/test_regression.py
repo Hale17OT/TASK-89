@@ -6,9 +6,9 @@ lifecycle, authenticated workstation-ID enforcement, and delivery-target routing
 import io
 import os
 from datetime import date, timedelta
-from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 from PIL import Image
 from rest_framework.test import APIClient
 
@@ -223,7 +223,7 @@ class TestDeliveryTargetRouting:
 
     def test_shared_folder_delivery_to_default_path(self, tmp_path):
         item = self._create_outbox_item(tmp_path, "shared_folder")
-        with patch("apps.reports.tasks._storage_root", return_value=str(tmp_path)):
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.reports.tasks import deliver_outbox_item
             deliver_outbox_item(str(item.pk))
         item.refresh_from_db()
@@ -234,7 +234,7 @@ class TestDeliveryTargetRouting:
     def test_shared_folder_delivery_to_custom_path(self, tmp_path):
         custom_dir = str(tmp_path / "custom_share")
         item = self._create_outbox_item(tmp_path, "shared_folder", custom_dir)
-        with patch("apps.reports.tasks._storage_root", return_value=str(tmp_path)):
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.reports.tasks import deliver_outbox_item
             deliver_outbox_item(str(item.pk))
         item.refresh_from_db()
@@ -243,7 +243,7 @@ class TestDeliveryTargetRouting:
 
     def test_print_queue_delivery_to_default_path(self, tmp_path):
         item = self._create_outbox_item(tmp_path, "print_queue")
-        with patch("apps.reports.tasks._storage_root", return_value=str(tmp_path)):
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.reports.tasks import deliver_outbox_item
             deliver_outbox_item(str(item.pk))
         item.refresh_from_db()
@@ -254,7 +254,7 @@ class TestDeliveryTargetRouting:
     def test_print_queue_delivery_to_custom_path(self, tmp_path):
         custom_queue = str(tmp_path / "my_printer_spool")
         item = self._create_outbox_item(tmp_path, "print_queue", custom_queue)
-        with patch("apps.reports.tasks._storage_root", return_value=str(tmp_path)):
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             from apps.reports.tasks import deliver_outbox_item
             deliver_outbox_item(str(item.pk))
         item.refresh_from_db()
@@ -266,7 +266,7 @@ class TestDeliveryTargetRouting:
         # Remove the pending file so delivery fails
         pending = tmp_path / "outbox" / "pending" / f"{item.pk}.pdf"
         pending.unlink()
-        with patch("apps.reports.tasks._storage_root", return_value=str(tmp_path)):
+        with override_settings(MEDRIGHTS_STORAGE_ROOT=str(tmp_path)):
             try:
                 from apps.reports.tasks import deliver_outbox_item
                 deliver_outbox_item(str(item.pk))

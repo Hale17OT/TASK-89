@@ -1,179 +1,89 @@
 # MedRights Patient Media & Consent Portal
 
-Offline clinical portal for managing patient Master Patient Index (MPI) records, patient-facing artwork with originality tracking, time-bound consents, offline manual financials, and tamper-evident audit trails. Fully containerized with zero external dependencies.
+A fully offline, containerized clinical portal for managing patient Master Patient Index (MPI) records, patient-facing clinical media with originality tracking, time-bound consents, offline manual financials with compensating-entry accounting, and tamper-evident audit trails. Built for single-clinic deployments with zero external dependencies.
+
+## Architecture & Tech Stack
+
+* **Frontend:** React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, React Query, React Router
+* **Backend:** Django 5, Django REST Framework, Celery (hexagonal architecture)
+* **Database:** MySQL 8.0
+* **Cache/Broker:** Redis 7
+* **Web Server:** Nginx (reverse proxy + SPA host), Gunicorn (WSGI)
+* **Containerization:** Docker & Docker Compose (Required)
+
+## Project Structure
+
+```text
+.
+├── backend/                # Django backend, Celery tasks, Dockerfile
+├── frontend/               # React SPA, Nginx config, Dockerfile
+├── e2e/                    # Playwright end-to-end tests
+├── docker-compose.yml      # Multi-container orchestration - MANDATORY
+├── run_tests.sh            # Standardized test execution script - MANDATORY
+└── README.md               # Project documentation - MANDATORY
+```
 
 ## Prerequisites
 
-- Docker Desktop (v24+)
-- Docker Compose (v2.20+)
-- Python 3 (for secret generation commands only; alternatively, use any random string generator)
+To ensure a consistent environment, this project is designed to run entirely within containers. You must have the following installed:
+* [Docker](https://docs.docker.com/get-docker/)
+* [Docker Compose](https://docs.docker.com/compose/install/)
 
-## Quick Start
+## Running the Application
 
-1. Start the services (development defaults are built into docker-compose.yml):
+1. **Build and Start Containers:**
+   Use Docker Compose to build the images and spin up the entire stack in detached mode.
+   ```bash
+   docker-compose up --build -d
+   ```
 
-```bash
-docker compose up --build
-```
+   The `docker-compose.yml` ships with safe development defaults for all secrets
+   (master key, secret key, database passwords), so no `.env` file is required
+   for local development. Override any value with environment variables for
+   production deployments.
 
-2. First-run setup (create the initial admin user):
+2. **Seed Initial Users:**
+   Create the default admin and role-test users after the stack is healthy.
+   ```bash
+   docker compose exec backend python manage.py seed_initial_data \
+     --e2e --admin-password 'MedRights2026!'
+   ```
 
-```bash
-docker compose exec backend python manage.py seed_initial_data --admin-password <YOUR_SECURE_PASSWORD>
-```
+3. **Access the App:**
+   * Frontend: `http://localhost:3000`
+   * Backend API: `http://localhost:8000/api/v1/`
+   * Health Check: `http://localhost:8000/api/v1/health/`
 
-Additional role users (front desk, clinician, compliance) should be created by the admin via the UI or API after initial setup.
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| Frontend | http://localhost:3000 | React SPA (Nginx) |
-| Backend API | http://localhost:8000/api/v1/ | Django REST API |
-| Health Check | http://localhost:8000/api/v1/health/ | System health status |
-| MySQL | localhost:3306 | Database |
-| Redis | localhost:6379 | Celery broker |
-
-### Production Deployment
-
-For production, override the default secrets via environment variables:
-
-```bash
-export MEDRIGHTS_SECRET_KEY=$(openssl rand -base64 50)
-export MEDRIGHTS_MASTER_KEY=$(openssl rand -base64 32)
-export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 24)
-export MYSQL_APP_PASSWORD=$(openssl rand -base64 24)
-docker compose up --build -d
-```
+4. **Stop the Application:**
+   ```bash
+   docker-compose down -v
+   ```
 
 ## Testing
 
+All unit, integration, and E2E tests are executed via a single, standardized shell script. This script automatically handles any necessary container orchestration for the test environment.
+
+Make sure the script is executable, then run it:
+
 ```bash
+chmod +x run_tests.sh
 ./run_tests.sh
 ```
 
-This runs:
-1. **Backend unit + integration tests** (pytest, self-contained with SQLite)
-2. **Frontend unit tests** (Vitest, self-contained in Node container)
-3. **E2E tests** (Playwright, requires running stack -- skipped if stack is not up)
+The script runs:
+1. **Backend tests** — 373 pytest tests (205 unit/integration + 168 black-box API tests)
+2. **Frontend tests** — 80 Vitest component/unit tests
+3. **E2E tests** — 70 Playwright browser tests against the live stack
 
-To include E2E tests, start the stack first:
-```bash
-docker compose up -d
-docker compose exec backend python manage.py seed_initial_data --admin-password <password>
-./run_tests.sh
-```
+*Note: The `run_tests.sh` script outputs a standard exit code (`0` for success, non-zero for failure) to integrate smoothly with CI/CD validators.*
 
-## Architecture
+## Seeded Credentials
 
-```
-Frontend (React 18 + TypeScript + shadcn/ui + Vite)
-    |
-    | HTTP (via Nginx reverse proxy)
-    |
-Backend (Django 5 + DRF, Hexagonal Architecture)
-    |
-    +-- Domain Layer (pure Python business logic)
-    +-- Infrastructure (ORM, encryption, file storage)
-    +-- API Layer (DRF serializers, views)
-    |
-    +-- MySQL 8.0 (encrypted patient data, partitioned audit log)
-    +-- Redis (Celery broker)
-    +-- Celery Worker (async tasks: auto-close, reconciliation, reports)
-    +-- Celery Beat (scheduled tasks)
-```
+The database is pre-seeded (via `seed_initial_data --e2e`) with the following test users. Use these credentials to verify authentication and role-based access controls.
 
-### Backend Structure (Hexagonal)
-- `domain/` -- Pure Python business logic, no Django imports
-- `infrastructure/` -- Django-coupled adapters (ORM, encryption, middleware)
-- `apps/` -- Django apps with DRF views and serializers (API layer)
-
-### Frontend Structure (Feature-based)
-- `src/api/` -- Axios client, endpoint functions, TypeScript types
-- `src/contexts/` -- Auth, notifications
-- `src/components/` -- Shared UI (shadcn/ui), layout, domain components
-- `src/features/` -- Vertical slices: auth, patients, media, financials, etc.
-
-## User Roles
-
-| Role | Access |
-|------|--------|
-| **Front Desk** | Patient registration, MPI search, orders, payments, media upload |
-| **Clinician** | Patient records, attach media to patient materials |
-| **Compliance** | Break-glass review, infringement reports, disputes, audit logs |
-| **Admin** | All above + user management, bulk export, system config, audit purge |
-
-## API Endpoints
-
-### Authentication
-- `POST /api/v1/auth/login/` -- Login with username/password
-- `POST /api/v1/auth/logout/` -- End session
-- `GET /api/v1/auth/session/` -- Current session info
-- `POST /api/v1/auth/session/refresh/` -- Reset idle timer
-- `POST /api/v1/auth/change-password/` -- Change password
-
-### Patients (MPI)
-- `GET /api/v1/patients/?q=<term>` -- Search patients (masked results)
-- `POST /api/v1/patients/create/` -- Create patient record
-- `GET /api/v1/patients/{id}/` -- Get patient (masked)
-- `PATCH /api/v1/patients/{id}/update/` -- Update patient fields
-- `POST /api/v1/patients/{id}/break-glass/` -- Request unmasked access
-
-### Consents
-- `GET /api/v1/patients/{id}/consents/` -- List consents
-- `POST /api/v1/patients/{id}/consents/` -- Create consent
-- `POST /api/v1/patients/{id}/consents/{id}/revoke/` -- Revoke consent
-
-### Media
-- `POST /api/v1/media/upload/` -- Upload with fingerprinting
-- `POST /api/v1/media/{id}/watermark/` -- Apply server-side watermark
-- `POST /api/v1/media/{id}/repost/authorize/` -- Authorize repost with citation
-- `POST /api/v1/media/infringement/` -- File infringement report
-
-### Financials
-- `POST /api/v1/financials/orders/` -- Create order
-- `POST /api/v1/financials/orders/{id}/payments/` -- Record payment
-- `POST /api/v1/financials/orders/{id}/refunds/` -- Initiate refund
-- `GET /api/v1/financials/reconciliation/` -- View reconciliation
-
-### Audit
-- `GET /api/v1/audit/entries/` -- Search audit log
-- `POST /api/v1/audit/verify-chain/` -- Verify tamper-evident chain
-
-### Reports
-- `POST /api/v1/reports/subscriptions/` -- Create report subscription
-- `GET /api/v1/reports/outbox/` -- View outbox dashboard
-- `GET /api/v1/reports/dashboard/` -- Runtime status dashboard
-
-### Admin
-- `GET /api/v1/users/` -- List users (admin only)
-- `POST /api/v1/users/{id}/disable/` -- Disable user (admin + sudo)
-- `POST /api/v1/sudo/acquire/` -- Acquire sudo-mode token
-- `GET /api/v1/workstations/` -- List blacklisted workstations
-- `POST /api/v1/workstations/{id}/unblock/` -- Unblock workstation (admin + sudo)
-
-### Bulk Export
-- `POST /api/v1/export/patients/` -- Export patient records as CSV (admin + sudo)
-- `POST /api/v1/export/media/` -- Export media metadata as CSV (admin + sudo)
-- `POST /api/v1/export/financials/` -- Export financial records as CSV (admin + sudo)
-
-## Security
-
-- **Passwords**: Argon2id hashing
-- **Sessions**: 15-minute idle timeout, 8-hour absolute limit
-- **Encryption**: AES-256-GCM for patient PII, HMAC-SHA256 for search indexes
-- **Throttling**: 5 failed logins / 10 min / workstation, auto-blacklist after 3 lockouts
-- **Audit**: Tamper-evident SHA-256 hash chain, 180-day searchable, 7-year archive
-- **Admin Actions**: Sudo-mode (re-enter password) required for dangerous operations
-- **No Deletion**: Financial records use compensating entries, never DELETE
-
-### Data Isolation Model
-MedRights is a single-tenant system designed for one clinic per deployment. All patient, financial, and media data belongs to one organization. Access control is enforced through role-based permissions (Front Desk, Clinician, Compliance, Admin), not multi-tenant scoping. Each clinic deployment runs on its own dedicated infrastructure.
-
-## Operations
-
-### Backup
-- Schedule `mysqldump` daily on the host or via a cron container
-- Also back up the `media_storage` Docker volume
-- Store backups on a separate physical drive or NAS
-
-### TLS
-This system is designed for offline LAN deployment without TLS. If deployed on a network where traffic may be intercepted, add a reverse proxy with TLS termination and update `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` to `True`.
+| Role | Username | Password | Notes |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin` | `MedRights2026!` | Full access: user management, bulk export, audit purge, system config. |
+| **Front Desk** | `frontdesk` | `MedRights2026!` | Patient registration, MPI search, orders, payments, media upload. |
+| **Clinician** | `clinician` | `MedRights2026!` | Patient records, attach media to patient materials. |
+| **Compliance** | `compliance` | `MedRights2026!` | Break-glass review, infringement reports, disputes, audit logs. |
