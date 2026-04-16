@@ -8,7 +8,7 @@
 (2) Searching vs. Masking in the MPI
 - **Question:** How can staff search for patients using identifiers (like SSNs) that are masked by default in the UI?
 - **My Understanding:** Masking usually interferes with search functionality if not handled correctly at the database level.
-- **Solution:** Perform server-side exact matches on **deterministic encryption ciphertext** or hashed identifiers. Masking is strictly a display constraint: the database searches unmasked/encrypted values, but the UI only renders the masked version (e.g., `***-**-1234`) in the results.
+- **Solution:** Perform server-side exact matches on **deterministic encryption ciphertext** or hashed identifiers. Masking is strictly a display constraint: the database searches unmasked/encrypted values, but the UI only renders the masked version in the results.
 
 (3) The Scope of "Break-Glass" Access
 - **Question:** Does "break-glass" access provide a one-time reveal or a persistent session-wide elevation?
@@ -18,7 +18,7 @@
 (4) Definition of "Originality Status" Logic
 - **Question:** How is "originality" verified in an offline environment without access to global image registries?
 - **My Understanding:** The system must rely on internal data to detect reposts or duplicates.
-- **Solution:** Determine originality via **internal cryptographic hash matching** ($SHA-256$). If an incoming file hash matches an existing record in the local MySQL DB, it is flagged as "Reposted." If unique, it is "Original." "Disputed" status remains a manual override for Compliance Officers.
+- **Solution:** Determine originality via **internal cryptographic hash matching**. If an incoming file hash matches an existing record in the local MySQL DB, it is flagged as "Reposted." If unique, it is "Original." "Disputed" status remains a manual override for Compliance Officers.
 
 (5) Retroactive Consent Revocation
 - **Question:** How does revoking consent affect data that has already been exported or printed?

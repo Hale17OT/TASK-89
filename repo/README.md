@@ -54,7 +54,17 @@ To ensure a consistent environment, this project is designed to run entirely wit
    * Backend API: `http://localhost:8000/api/v1/`
    * Health Check: `http://localhost:8000/api/v1/health/`
 
-4. **Stop the Application:**
+4. **Verify the System is Working:**
+
+   Confirm the backend is healthy:
+   ```bash
+   curl -s http://localhost:8000/api/v1/health/ | python -m json.tool
+   ```
+   You should see `{"status": "healthy", ...}`.
+
+   Then open `http://localhost:3000` in a browser, log in with the admin credentials below (`admin` / `MedRights2026!`), and verify the dashboard loads with navigation to Patients, Media, Financials, and Admin sections.
+
+5. **Stop the Application:**
    ```bash
    docker-compose down -v
    ```

@@ -215,6 +215,24 @@ class TestGuestProfiles:
         r2 = c.get(f"/api/v1/auth/guest-profiles/{pk}/recent-patients/", **WS)
         assert r2.status_code == 200
 
+    def test_guest_recent_patients_post(self):
+        c = _admin()
+        r = c.post(
+            "/api/v1/auth/guest-profiles/",
+            json.dumps({"display_name": "Guest D"}),
+            content_type="application/json",
+            **WS,
+        )
+        pk = r.json()["id"]
+        patient = _create_patient()
+        r2 = c.post(
+            f"/api/v1/auth/guest-profiles/{pk}/recent-patients/",
+            json.dumps({"patient_id": patient["id"]}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r2.status_code == 201
+
     def test_guest_profile_anon_denied(self):
         r = _anon().get("/api/v1/auth/guest-profiles/", **WS)
         assert r.status_code in (401, 403)
@@ -1015,11 +1033,49 @@ class TestReconciliationDetail:
         r = _admin().get("/api/v1/financials/reconciliation/2020-01-01/", **WS)
         assert r.status_code == 404
 
+    def test_reconciliation_detail_success(self, tmp_path):
+        from apps.financials.models import DailyReconciliation
+        csv_file = tmp_path / "recon.csv"
+        csv_file.write_text("header\nrow")
+        DailyReconciliation.objects.create(
+            reconciliation_date="2025-01-15",
+            total_orders=5,
+            total_revenue="500.00",
+            total_payments="450.00",
+            total_refunds="0.00",
+            discrepancy="50.00",
+            csv_file_path=str(csv_file),
+            generated_by="test",
+        )
+        r = _admin().get("/api/v1/financials/reconciliation/2025-01-15/", **WS)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["reconciliation_date"] == "2025-01-15"
+        assert body["total_orders"] == 5
+
 
 class TestReconciliationDownload:
     def test_reconciliation_download_not_found(self):
         r = _admin().get("/api/v1/financials/reconciliation/2020-01-01/download/", **WS)
         assert r.status_code == 404
+
+    def test_reconciliation_download_success(self, tmp_path):
+        from apps.financials.models import DailyReconciliation
+        csv_file = tmp_path / "recon_dl.csv"
+        csv_file.write_text("date,total\n2025-01-16,100")
+        DailyReconciliation.objects.create(
+            reconciliation_date="2025-01-16",
+            total_orders=1,
+            total_revenue="100.00",
+            total_payments="100.00",
+            total_refunds="0.00",
+            discrepancy="0.00",
+            csv_file_path=str(csv_file),
+            generated_by="test",
+        )
+        r = _admin().get("/api/v1/financials/reconciliation/2025-01-16/download/", **WS)
+        assert r.status_code == 200
+        assert r["Content-Type"] == "text/csv"
 
 
 # ---------------------------------------------------------------------------
@@ -1334,6 +1390,17 @@ class TestSubscriptionDetail:
         sub = self._make_sub()
         r = _admin().get(f"/api/v1/reports/subscriptions/{sub['id']}/", **WS)
         assert r.status_code == 200
+
+    def test_subscription_patch(self):
+        sub = self._make_sub()
+        r = _admin().patch(
+            f"/api/v1/reports/subscriptions/{sub['id']}/",
+            json.dumps({"name": "Updated Sub Name"}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        assert r.json()["name"] == "Updated Sub Name"
 
     def test_subscription_delete_deactivate(self):
         sub = self._make_sub()

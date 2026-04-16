@@ -6,11 +6,8 @@ vi.mock("@/api/endpoints/financials", () => ({
   createOrder: vi.fn(),
 }));
 
-vi.mock("@/api/client", () => ({
-  default: {
-    get: vi.fn().mockResolvedValue({ data: [] }),
-    post: vi.fn(),
-  },
+vi.mock("@/api/endpoints/patients", () => ({
+  searchPatients: vi.fn().mockResolvedValue([]),
 }));
 
 const adminUser = { id: "1", username: "admin", role: "admin", full_name: "Admin" };
