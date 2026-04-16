@@ -1,5 +1,7 @@
 # MedRights Patient Media & Consent Portal
 
+**Project type: Fullstack** (React SPA + Django REST API)
+
 A fully offline, containerized clinical portal for managing patient Master Patient Index (MPI) records, patient-facing clinical media with originality tracking, time-bound consents, offline manual financials with compensating-entry accounting, and tamper-evident audit trails. Built for single-clinic deployments with zero external dependencies.
 
 ## Architecture & Tech Stack
@@ -45,7 +47,7 @@ To ensure a consistent environment, this project is designed to run entirely wit
 2. **Seed Initial Users:**
    Create the default admin and role-test users after the stack is healthy.
    ```bash
-   docker compose exec backend python manage.py seed_initial_data \
+   docker-compose exec backend python manage.py seed_initial_data \
      --e2e --admin-password 'MedRights2026!'
    ```
 
@@ -60,7 +62,7 @@ To ensure a consistent environment, this project is designed to run entirely wit
    ```bash
    curl -s http://localhost:8000/api/v1/health/ | python -m json.tool
    ```
-   You should see `{"status": "healthy", ...}`.
+   You should see `{"status": "ok", "version": "1.0.0", ...}`.
 
    Then open `http://localhost:3000` in a browser, log in with the admin credentials below (`admin` / `MedRights2026!`), and verify the dashboard loads with navigation to Patients, Media, Financials, and Admin sections.
 

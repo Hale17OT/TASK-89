@@ -62,12 +62,38 @@ def _anon():
     return Client()
 
 
+def _admin_with_sudo(action_class):
+    """Login as admin and acquire a sudo token. Returns a Client with active sudo."""
+    c = _admin()
+    c.post(
+        "/api/v1/sudo/acquire/",
+        json.dumps({"password": "Pass1234!", "action_class": action_class}),
+        content_type="application/json",
+        **WS,
+    )
+    return c
+
+
 def _test_image():
     buf = io.BytesIO()
     Image.new("RGB", (10, 10), "red").save(buf, "PNG")
     buf.seek(0)
     buf.name = "test.png"
     return buf
+
+
+def _assert_denied(r):
+    """Assert a 401/403 response has a well-formed error body."""
+    assert r.status_code in (401, 403), f"Expected 401/403, got {r.status_code}"
+    body = r.json()
+    assert "detail" in body or "error" in body, f"Denial response missing 'error' or 'detail': {body}"
+
+
+def _assert_role_denied(r, expected_status=403):
+    """Assert a role-based 403 with error schema."""
+    assert r.status_code == expected_status
+    body = r.json()
+    assert "detail" in body or "error" in body, f"403 response missing error schema: {body}"
 
 
 # ---------------------------------------------------------------------------
@@ -664,7 +690,7 @@ class TestInfringementListCreate:
 
     def test_infringement_list_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/media/infringement/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
     def test_infringement_create_anon_denied(self):
         r = _anon().post(
@@ -1090,7 +1116,7 @@ class TestUserList:
 
     def test_user_list_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/users/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
     def test_user_create(self):
         r = _admin().post(
@@ -1140,8 +1166,20 @@ class TestUserDisable:
             content_type="application/json",
             **WS,
         )
-        # Should fail because sudo is required
         assert r.status_code == 403
+
+    def test_user_disable_success_with_sudo(self):
+        uid = str(User.objects.get(username="bb_clin").pk)
+        c = _admin_with_sudo("user_disable")
+        r = c.post(
+            f"/api/v1/users/{uid}/disable/",
+            json.dumps({"confirm": True}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["user"]["is_active"] is False
 
     def test_user_disable_frontdesk_denied(self):
         uid = str(User.objects.get(username="bb_clin").pk)
@@ -1155,6 +1193,22 @@ class TestUserDisable:
 
 
 class TestUserEnable:
+    def test_user_enable_success(self):
+        # First disable the user, then re-enable
+        user = User.objects.get(username="bb_clin")
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        uid = str(user.pk)
+        r = _admin().post(
+            f"/api/v1/users/{uid}/enable/",
+            json.dumps({}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["user"]["is_active"] is True
+
     def test_user_enable_already_active(self):
         uid = str(User.objects.get(username="bb_fd").pk)
         r = _admin().post(
@@ -1191,7 +1245,7 @@ class TestWorkstationList:
 
     def test_workstation_list_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/workstations/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
 
 class TestWorkstationUnblock:
@@ -1199,6 +1253,19 @@ class TestWorkstationUnblock:
         r = _admin().post("/api/v1/workstations/99999/unblock/", **WS)
         # No sudo -> 403
         assert r.status_code == 403
+
+    def test_workstation_unblock_success_with_sudo(self):
+        from apps.accounts.models import WorkstationBlacklist
+        bl = WorkstationBlacklist.objects.create(
+            client_ip="10.0.0.99",
+            workstation_id="ws-blocked-01",
+            is_active=True,
+        )
+        c = _admin_with_sudo("workstation_unblock")
+        r = c.post(f"/api/v1/workstations/{bl.pk}/unblock/", **WS)
+        assert r.status_code == 200
+        bl.refresh_from_db()
+        assert bl.is_active is False
 
     def test_workstation_unblock_anon_denied(self):
         r = _anon().post("/api/v1/workstations/1/unblock/", **WS)
@@ -1279,6 +1346,19 @@ class TestAuditList:
 
 
 class TestAuditDetail:
+    def test_audit_detail_success(self):
+        from apps.audit.service import create_audit_entry
+        entry = create_audit_entry(
+            event_type="test_detail",
+            target_model="Test",
+            target_id="1",
+            target_repr="test",
+        )
+        r = _admin().get(f"/api/v1/audit/entries/{entry.pk}/", **WS)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["event_type"] == "test_detail"
+
     def test_audit_detail_not_found(self):
         r = _admin().get("/api/v1/audit/entries/999999/", **WS)
         assert r.status_code == 404
@@ -1300,6 +1380,21 @@ class TestAuditVerifyChain:
 
 
 class TestAuditPurge:
+    def test_purge_success_with_sudo(self):
+        c = _admin_with_sudo("log_purge")
+        r = c.post(
+            "/api/v1/audit/purge/",
+            json.dumps({
+                "confirm": True,
+                "before_date": "2017-01-01T00:00:00Z",
+            }),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert "deleted_count" in body
+
     def test_purge_no_sudo(self):
         r = _admin().post(
             "/api/v1/audit/purge/",
@@ -1349,7 +1444,7 @@ class TestSubscriptionListCreate:
 
     def test_subscription_list_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/reports/subscriptions/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
     def test_subscription_create_compliance_denied(self):
         r = _compliance().post(
@@ -1470,19 +1565,56 @@ class TestOutboxList:
         assert r.status_code == 403
 
 
+def _make_outbox_item(status="delivered", file_path=""):
+    from apps.reports.models import OutboxItem
+    return OutboxItem.objects.create(
+        report_name="Test Report",
+        file_format="pdf",
+        status=status,
+        file_path=file_path,
+        delivery_target="shared_folder",
+    )
+
+
 class TestOutboxDetail:
+    def test_outbox_detail_success(self):
+        item = _make_outbox_item()
+        r = _admin().get(f"/api/v1/reports/outbox/{item.pk}/", **WS)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["report_name"] == "Test Report"
+
     def test_outbox_detail_not_found(self):
         r = _admin().get(f"/api/v1/reports/outbox/{uuid.uuid4()}/", **WS)
         assert r.status_code == 404
 
 
 class TestOutboxDownload:
+    def test_outbox_download_success(self, tmp_path):
+        f = tmp_path / "report.pdf"
+        f.write_text("fake pdf content")
+        item = _make_outbox_item(file_path=str(f))
+        r = _admin().get(f"/api/v1/reports/outbox/{item.pk}/download/", **WS)
+        assert r.status_code == 200
+
     def test_outbox_download_not_found(self):
         r = _admin().get(f"/api/v1/reports/outbox/{uuid.uuid4()}/download/", **WS)
         assert r.status_code == 404
 
 
 class TestOutboxRetry:
+    def test_outbox_retry_success(self):
+        item = _make_outbox_item(status="failed")
+        r = _admin().post(
+            f"/api/v1/reports/outbox/{item.pk}/retry/",
+            json.dumps({}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert "message" in body
+
     def test_outbox_retry_not_found(self):
         r = _admin().post(
             f"/api/v1/reports/outbox/{uuid.uuid4()}/retry/",
@@ -1503,6 +1635,16 @@ class TestOutboxRetry:
 
 
 class TestOutboxAcknowledge:
+    def test_outbox_acknowledge_success(self):
+        item = _make_outbox_item(status="stalled")
+        r = _admin().post(
+            f"/api/v1/reports/outbox/{item.pk}/acknowledge/",
+            json.dumps({}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+
     def test_outbox_acknowledge_not_found(self):
         r = _admin().post(
             f"/api/v1/reports/outbox/{uuid.uuid4()}/acknowledge/",
@@ -1539,7 +1681,7 @@ class TestReportDashboard:
 
     def test_dashboard_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/reports/dashboard/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
 
 # ---------------------------------------------------------------------------
@@ -1617,10 +1759,29 @@ class TestPolicyList:
 
     def test_policy_list_frontdesk_denied(self):
         r = _frontdesk().get("/api/v1/policies/", **WS)
-        assert r.status_code == 403
+        _assert_role_denied(r)
 
 
 class TestPolicyUpdate:
+    def test_policy_update_success_with_sudo(self):
+        from apps.accounts.models import SystemPolicy
+        SystemPolicy.objects.create(
+            key="test_bb_policy",
+            value="old_value",
+            description="Test policy for blackbox",
+        )
+        c = _admin_with_sudo("policy_update")
+        r = c.patch(
+            "/api/v1/policies/test_bb_policy/",
+            json.dumps({"value": "new_value", "confirm": True}),
+            content_type="application/json",
+            **WS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["value"] == "new_value"
+        assert body["key"] == "test_bb_policy"
+
     def test_policy_update_no_sudo(self):
         r = _admin().patch(
             "/api/v1/policies/some_key/",
@@ -1688,57 +1849,46 @@ class TestClientErrorLog:
 # ---------------------------------------------------------------------------
 
 class TestCrossCuttingAuth:
-    """Verify that various protected endpoints reject anonymous users."""
+    """Verify that various protected endpoints reject anonymous users
+    and return a well-formed error body (not just a status code)."""
 
     def test_patients_create_anon(self):
-        r = _anon().post("/api/v1/patients/create/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().post("/api/v1/patients/create/", **WS))
 
     def test_media_list_anon(self):
-        r = _anon().get("/api/v1/media/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/media/", **WS))
 
     def test_orders_list_anon(self):
-        r = _anon().get("/api/v1/financials/orders/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/financials/orders/", **WS))
 
     def test_refunds_list_anon(self):
-        r = _anon().get("/api/v1/financials/refunds/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/financials/refunds/", **WS))
 
     def test_audit_list_anon(self):
-        r = _anon().get("/api/v1/audit/entries/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/audit/entries/", **WS))
 
     def test_users_list_anon(self):
-        r = _anon().get("/api/v1/users/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/users/", **WS))
 
     def test_sudo_acquire_anon(self):
-        r = _anon().post(
+        _assert_denied(_anon().post(
             "/api/v1/sudo/acquire/",
             json.dumps({"password": "x", "action_class": "user_disable"}),
             content_type="application/json",
             **WS,
-        )
-        assert r.status_code in (401, 403)
+        ))
 
     def test_reports_subscriptions_anon(self):
-        r = _anon().get("/api/v1/reports/subscriptions/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/reports/subscriptions/", **WS))
 
     def test_reports_outbox_anon(self):
-        r = _anon().get("/api/v1/reports/outbox/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/reports/outbox/", **WS))
 
     def test_reports_dashboard_anon(self):
-        r = _anon().get("/api/v1/reports/dashboard/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/reports/dashboard/", **WS))
 
     def test_workstations_list_anon(self):
-        r = _anon().get("/api/v1/workstations/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/workstations/", **WS))
 
     def test_policies_list_anon(self):
-        r = _anon().get("/api/v1/policies/", **WS)
-        assert r.status_code in (401, 403)
+        _assert_denied(_anon().get("/api/v1/policies/", **WS))
