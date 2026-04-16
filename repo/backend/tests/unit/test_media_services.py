@@ -154,7 +154,7 @@ class TestCheckOriginality:
         assert status == "original"
         assert asset is None
 
-    def test_reposted_when_match_exists(self, db):
+    def test_reposted_when_match_exists(self, db, admin_user):
         from apps.media_engine.services import check_originality
         from apps.media_engine.models import MediaAsset
 
@@ -166,13 +166,14 @@ class TestCheckOriginality:
             pixel_hash="known_hash_xyz",
             file_hash="file_hash_abc",
             originality_status="original",
+            uploaded_by=admin_user,
         )
 
         status, asset = check_originality("known_hash_xyz")
         assert status == "reposted"
         assert asset.pk == existing.pk
 
-    def test_ignores_deleted_assets(self, db):
+    def test_ignores_deleted_assets(self, db, admin_user):
         from apps.media_engine.services import check_originality
         from apps.media_engine.models import MediaAsset
 
@@ -185,6 +186,7 @@ class TestCheckOriginality:
             file_hash="file_hash_del",
             originality_status="original",
             is_deleted=True,
+            uploaded_by=admin_user,
         )
 
         status, asset = check_originality("deleted_hash")

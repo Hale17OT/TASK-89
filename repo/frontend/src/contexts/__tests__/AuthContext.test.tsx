@@ -41,7 +41,7 @@ function TestConsumer() {
       <span data-testid="reauth">{String(auth.reauthRequired)}</span>
       <button
         data-testid="login-btn"
-        onClick={() => auth.login({ username: "admin", password: "pass" })}
+        onClick={() => auth.login({ username: "admin", password: "pass" }).catch(() => {})}
       >
         Login
       </button>
@@ -156,11 +156,13 @@ describe("AuthContext", () => {
         expect(screen.getByTestId("loading").textContent).toBe("false");
       });
 
-      await expect(async () => {
-        await user.click(screen.getByTestId("login-btn"));
-      }).rejects.toThrow();
+      // Click login — the error is thrown inside the component's async handler
+      await user.click(screen.getByTestId("login-btn"));
 
-      // Should still be logged out
+      // After the rejected promise settles, loading should be false and user still null
+      await waitFor(() => {
+        expect(screen.getByTestId("loading").textContent).toBe("false");
+      });
       expect(screen.getByTestId("user").textContent).toBe("null");
     });
   });
